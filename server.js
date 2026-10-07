@@ -42,7 +42,8 @@ function addStep(entry) {
   try { fs.appendFileSync(STEPS, JSON.stringify(entry) + "\n"); } catch (e) { console.error("step save failed:", e.message); }
 }
 const today = () => new Date().toISOString().slice(0, 10);
-const statusOf = (text) => (/STATUS:\s*PARTIAL/i.test(text || "") ? "partial" : "open");
+const statusOf = (text) => (/STATUS:\s*SOLVED/i.test(text || "") ? "solved" : /STATUS:\s*PARTIAL/i.test(text || "") ? "partial" : "open");
+const RANK = { open: 0, partial: 1, solved: 2 };
 
 // One row per problem the Professor has worked on, newest activity first.
 function notebook() {
@@ -53,7 +54,7 @@ function notebook() {
     r.lastAt = Math.max(r.lastAt, s.at);
     if (s.stage === STAGES.length - 1) {
       r.rounds = Math.max(r.rounds, s.round);
-      if (statusOf(s.text) === "partial") { r.partialRounds++; r.status = "partial"; }
+      const st = statusOf(s.text); if (st !== "open") r.partialRounds++; if (RANK[st] > RANK[r.status]) r.status = st;
       if (s.round >= r.verdictRound) { r.verdict = s.text; r.verdictRound = s.round; }
     }
   }
@@ -207,6 +208,8 @@ async function loop() {
 function stop() { running = false; abort?.abort(); wake?.(); }
 
 /* ---------------- http ---------------- */
+// The page can live in public/index.html or at the top level of the repo.
+const INDEX_CANDIDATES = [path.join(__dirname, "public", "index.html"), path.join(__dirname, "index.html")];
 function json(res, code, body) { res.writeHead(code, { "Content-Type": "application/json" }); res.end(JSON.stringify(body)); }
 const isAdmin = (req) => ADMIN_TOKEN && req.headers.authorization === `Bearer ${ADMIN_TOKEN}`;
 
@@ -258,9 +261,17 @@ const server = http.createServer((req, res) => {
     return json(res, 404, { error: "Unknown action" });
   }
 
-  if (url.pathname === "/") {
-    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
-    return fs.createReadStream(path.join(__dirname, "public/index.html")).pipe(res);
+  if (url.pathname === "/" || url.pathname === "/index.html") {
+    const page = INDEX_CANDIDATES.find((f) => fs.existsSync(f));
+    if (!page) {
+      res.writeHead(500, { "Content-Type": "text/plain" });
+      return res.end("index.html is missing. Upload it to the repo (in a public/ folder or the top level) and redeploy.");
+    }
+    return fs.readFile(page, (err, html) => {
+      if (err) { res.writeHead(500, { "Content-Type": "text/plain" }); return res.end("Could not read index.html"); }
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
+      res.end(html);
+    });
   }
   res.writeHead(404, { "Content-Type": "text/plain" }); res.end("Not found");
 });
@@ -268,6 +279,11 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`The Professor is listening on :${PORT}`);
   if (!API_KEY) console.warn("ANTHROPIC_API_KEY is not set: the Professor cannot work.");
+  const page = INDEX_CANDIDATES.find((f) => fs.existsSync(f));
+  console.log(page ? `Serving ${path.relative(__dirname, page)}` : "WARNING: index.html not found. Upload it to public/ or the repo root.");
   if (AUTOSTART) loop();
 });
+// Never let one bad request take the Professor down mid-thought.
+process.on("uncaughtException", (e) => console.error("uncaught:", e));
+process.on("unhandledRejection", (e) => console.error("unhandled:", e));
 process.on("SIGTERM", () => { stop(); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 3000); });
