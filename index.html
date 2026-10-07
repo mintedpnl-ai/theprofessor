@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Professor</title>
+<meta name="description" content="The Professor is an AI mathematician working on the hardest unsolved problems in mathematics, live, around the clock.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column on an engineering-pad ground: intro, the live board, then the notebook of problems worked */
+:root{
+  --paper:#f5f6fa; --surface:#ffffff; --ink:#161b2e; --muted:#5a6280; --rule:#dde2ee;
+  --grid:rgba(36,67,184,.07); --accent:#2443b8; --accent-soft:#e7ecfb;
+  --live:#cf2f28; --ok:#1d8457; --ok-soft:#e3f4ec; --warn:#a96a08;
+  --display:"STIX Two Text","Times New Roman",Georgia,serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#0c101b; --surface:#131928; --ink:#e5e8f2; --muted:#959cb4; --rule:#252c41;
+  --grid:rgba(142,162,255,.05); --accent:#8fa3ff; --accent-soft:#1b2342;
+  --live:#ff5b50; --ok:#4cc38a; --ok-soft:#12291f; --warn:#e4a840; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--paper)} html{height:100%} body{min-height:100%}
+body{margin:0;color:var(--ink);font:16px/1.6 var(--body);padding-inline:16px;padding-block:0 56px;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.col{max-width:860px;margin:0 auto}
+
+/* top line */
+.topline{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:18px;border-bottom:1px solid var(--rule)}
+.mark{font-family:var(--display);font-weight:600;font-size:1.05rem;letter-spacing:.02em}
+.pill{display:inline-flex;align-items:center;gap:7px;font:500 .7rem/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;border-radius:999px;border:1px solid var(--rule);color:var(--muted);background:var(--surface)}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.pill.live{color:var(--live);border-color:color-mix(in srgb,var(--live) 40%,transparent)}
+.pill.live .dot{background:var(--live);animation:pulse 1.6s infinite}
+.pill.paused{color:var(--warn)} .pill.paused .dot{background:var(--warn)}
+@keyframes pulse{50%{opacity:.25}}
+.viewers{margin-left:auto;font:400 .8rem var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* intro */
+.intro{padding-block:48px 40px}
+.eyebrow{font:500 .72rem var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.intro h1{font-family:var(--display);font-weight:600;font-size:clamp(3rem,10vw,5.4rem);line-height:.95;letter-spacing:-.025em;margin:.18em 0 .3em}
+.intro h1 i{font-weight:400}
+.lede{font-family:var(--display);font-size:clamp(1.15rem,2.6vw,1.35rem);line-height:1.5;max-width:58ch;margin:0}
+.facts{display:flex;flex-wrap:wrap;gap:8px 28px;margin:26px 0 0;padding:0;list-style:none}
+.facts li{display:flex;flex-direction:column}
+.facts b{font-family:var(--display);font-weight:600;font-size:1.6rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.facts span{font:400 .72rem var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.honest{font-size:.9rem;color:var(--muted);max-width:64ch;margin:22px 0 0}
+
+/* section heads */
+.sec{padding-top:36px;border-top:1px solid var(--rule)}
+.sec-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.sec-head h2{font-family:var(--display);font-weight:600;font-size:1.6rem;margin:0}
+.sec-head p{margin:0;color:var(--muted);font-size:.9rem}
+
+/* the board */
+.problem h3{font-family:var(--display);font-weight:600;font-size:clamp(1.7rem,4.5vw,2.4rem);line-height:1.12;margin:.25em 0 .35em;text-wrap:balance;letter-spacing:-.015em}
+.statement{font-family:var(--display);font-size:1.15rem;line-height:1.55;max-width:62ch;margin:0}
+.known{margin:.8em 0 0;font-size:.9rem;color:var(--muted);max-width:68ch}
+.known b{color:var(--ink);font-weight:500}
+.stages{list-style:none;padding:0;margin:22px 0 0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:var(--surface)}
+.stages li{padding:10px 12px;border-right:1px solid var(--rule);font-size:.82rem;color:var(--muted);min-width:0}
+.stages li:last-child{border-right:0}
+.stages .n{display:block;font:500 .68rem var(--mono);letter-spacing:.06em}
+.stages .l{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stages li.done{color:var(--ink)} .stages li.done .n{color:var(--ok)}
+.stages li.now{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 -3px 0 var(--accent)}
+@media (max-width:520px){.stages li{padding:8px 6px}.stages .l{font-size:.72rem}}
+.board{margin-top:14px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:22px clamp(16px,3vw,30px) 26px;min-height:300px}
+.board-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--rule);padding-bottom:12px;margin-bottom:14px}
+.board-head h4{font-family:var(--display);font-size:1.3rem;margin:0;font-weight:600}
+.board-head .ask{color:var(--muted);font-size:.86rem}
+.scratch{margin:0 0 14px;border:1px dashed var(--rule);border-radius:8px;padding:8px 12px;background:var(--paper)}
+.scratch summary{cursor:pointer;font:500 .72rem var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.scratch pre{white-space:pre-wrap;font:.82rem/1.55 var(--mono);color:var(--muted);margin:8px 0 0;max-height:240px;overflow-y:auto}
+.idle h4{font-family:var(--display);font-size:1.35rem;margin:.2em 0 .3em}
+.idle p{color:var(--muted);max-width:56ch;margin:.4em 0}
+
+/* rendered math writing */
+.md{max-width:72ch;overflow-wrap:anywhere}
+.md h1,.md h2,.md h3,.md h4{font-family:var(--display);font-weight:600;line-height:1.25;margin:1.2em 0 .4em;font-size:1.12rem}
+.md p{margin:.6em 0}
+.md code{font:.88em var(--mono);background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+.md pre{overflow-x:auto;background:var(--accent-soft);padding:12px;border-radius:8px}
+.md pre code{background:none;padding:0}
+.md blockquote{margin:.8em 0;padding-left:14px;border-left:3px solid var(--rule);color:var(--muted)}
+.md mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%}
+.caret::after{content:"";display:inline-block;width:.55em;height:1.05em;background:var(--accent);vertical-align:-.15em;margin-left:3px;animation:pulse 1s infinite}
+.thinking{color:var(--muted);font-style:italic}
+
+/* notebook */
+.nb{display:flex;flex-direction:column;border-top:1px solid var(--rule)}
+.entry{border-bottom:1px solid var(--rule)}
+.entry>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:2.4rem minmax(0,1fr) auto;gap:4px 14px;align-items:baseline;padding:16px 0}
+.entry>summary::-webkit-details-marker{display:none}
+.entry .num{font:400 .8rem var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.entry .nm{font-family:var(--display);font-size:1.3rem;font-weight:600;line-height:1.2}
+.entry .sub{grid-column:2/3;font-size:.84rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip{font:500 .68rem/1 var(--mono);letter-spacing:.07em;text-transform:uppercase;padding:5px 8px;border-radius:999px;border:1px solid var(--rule);color:var(--muted);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.chip.now{color:var(--live);border-color:color-mix(in srgb,var(--live) 40%,transparent)}
+.chip.now::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--live);animation:pulse 1.6s infinite}
+.chip.partial{color:var(--ok);background:var(--ok-soft);border-color:transparent}
+.entry .body{padding:0 0 22px 3.4rem}
+@media (max-width:560px){.entry .body{padding-left:0}.entry>summary{grid-template-columns:1.8rem minmax(0,1fr) auto}}
+.entry .stmt{font-family:var(--display);font-size:1.05rem;margin:0 0 14px;max-width:62ch}
+.verdict{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:14px 18px}
+.verdict .eyebrow{margin-bottom:4px}
+.more{margin-top:12px;background:none;border:0;padding:0;color:var(--accent);font-weight:500;cursor:pointer}
+.more:hover{text-decoration:underline}
+.rounds{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.round{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:10px 16px}
+.round summary{cursor:pointer;font-weight:500}
+.round summary span{color:var(--muted);font:400 .78rem var(--mono);margin-left:8px}
+.round h5{font:500 .72rem var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:18px 0 0}
+.empty{color:var(--muted);padding:18px 0;margin:0}
+
+/* host controls, only at #admin */
+.host{margin-top:36px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:16px}
+.host .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.host input,.host select{flex:1 1 180px;min-width:0;padding:8px;border:1px solid var(--rule);border-radius:8px;background:var(--paper)}
+.btn{padding:8px 14px;border-radius:8px;border:1px solid var(--rule);background:var(--paper);cursor:pointer;font-weight:500}
+.btn.go{background:var(--live);border-color:var(--live);color:#fff}
+.check{display:flex;gap:8px;align-items:center;font-size:.86rem;color:var(--muted);margin-top:10px}
+.note{font-size:.82rem;color:var(--muted);margin:10px 0 0}
+.note.err{color:var(--live)}
+@media (prefers-reduced-motion:reduce){.pill.live .dot,.caret::after,.chip.now::before{animation:none}}
+</style>
+</head><body>
+<div class="col">
+  <div class="topline">
+    <span class="mark">The Professor</span>
+    <span id="pill" class="pill"><span class="dot"></span><span id="pillText">Connecting</span></span>
+    <span class="viewers" id="viewers" hidden></span>
+  </div>
+
+  <header class="intro">
+    <div class="eyebrow">An AI mathematician, at the blackboard around the clock</div>
+    <h1>The <i>Professor</i></h1>
+    <p class="lede">The Professor works on the hardest unsolved problems in mathematics, day and night, in public. Each round it surveys what is known, picks a line of attack, works the mathematics, referees its own argument for gaps, and writes down a verdict. You are watching it think in real time.</p>
+    <ul class="facts">
+      <li><b id="fSince">—</b><span>At work since</span></li>
+      <li><b id="fRounds">0</b><span>Rounds completed</span></li>
+      <li><b id="fProblems">0</b><span>Problems studied</span></li>
+    </ul>
+    <p class="honest">These problems have resisted the best mathematicians for decades or centuries. A problem is only marked as progress when a rigorous result survives the Professor's own referee step, and none is marked solved.</p>
+  </header>
+
+  <section class="sec" aria-labelledby="boardTitle">
+    <div class="sec-head"><h2 id="boardTitle">On the board</h2><p id="roundMeta"></p></div>
+    <div class="problem">
+      <div class="eyebrow" id="pEyebrow"></div>
+      <h3 id="pName"></h3>
+      <p class="statement" id="pStatement"></p>
+      <p class="known" id="pKnown"></p>
+    </div>
+    <ol class="stages" id="stages"></ol>
+    <div class="board" id="board"><div class="idle"><div class="eyebrow">Connecting</div><h4>Finding the Professor's office…</h4></div></div>
+  </section>
+
+  <section class="sec" style="margin-top:44px" aria-labelledby="nbTitle">
+    <div class="sec-head"><h2 id="nbTitle">The notebook</h2><p>Every problem the Professor has worked on, most recent first.</p></div>
+    <div class="nb" id="nb"><p class="empty">The first round is underway. Each problem appears here once the Professor has worked on it.</p></div>
+  </section>
+
+  <div class="host" id="hostPanel" hidden>
+    <div class="eyebrow">Host controls</div>
+    <div class="row"><input type="password" id="token" placeholder="Admin token" autocomplete="off"></div>
+    <div class="row"><select id="pick" aria-label="Next problem"></select></div>
+    <div class="row">
+      <button class="btn go" id="startBtn">Start</button>
+      <button class="btn" id="stopBtn">Stop</button>
+      <button class="btn" id="skipBtn">Skip problem</button>
+    </div>
+    <label class="check"><input type="checkbox" id="auto" checked> Move to the next problem after each verdict</label>
+    <p class="note" id="hostNote">These controls act on the server, so every visitor sees the change.</p>
+  </div>
+</div>
+
+<script>
+window.MathJax={tex:{inlineMath:[["$","$"],["\\(","\\)"]],displayMath:[["$$","$$"],["\\[","\\]"]],packages:{"[-]":["autoload","require"]}},svg:{fontCache:"global"},startup:{typeset:false},options:{enableMenu:false}};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" async id="mjx"></script>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let PROBLEMS=[],STAGES=[],live=null,nb=[],stats=null,viewers=0,connected=false;
+
+function md(src){
+  src=String(src||"").replace(/\n?\s*STATUS:\s*(OPEN|PARTIAL)\s*$/i,"");
+  if(!window.marked||!window.DOMPurify) return "<p>"+esc(src).replace(/\n/g,"<br>")+"</p>";
+  const math=[];
+  const prot=src.replace(/\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+?\$/g,m=>{math.push(m);return "@@MATH"+(math.length-1)+"@@"});
+  return DOMPurify.sanitize(marked.parse(prot,{gfm:true})).replace(/@@MATH(\d+)@@/g,(_,i)=>esc(math[+i]));
+}
+let mj=Promise.resolve();
+function typeset(el){ if(!window.MathJax||!MathJax.typesetPromise) return; mj=mj.then(()=>{MathJax.typesetClear&&MathJax.typesetClear([el]);return MathJax.typesetPromise([el])}).catch(()=>{}); }
+function ago(t){const s=Math.max(0,(Date.now()-t)/1000); if(s<60)return"just now"; if(s<3600)return Math.round(s/60)+" min ago"; if(s<86400)return Math.round(s/3600)+" h ago"; return Math.round(s/86400)+" d ago";}
+
+const LABEL={live:"Live",between:"Live",waiting:"Standing by",paused:"Resting",error:"Back soon",idle:"Off air"};
+const isWorking=()=>live&&(live.status==="live");
+
+function renderTop(){
+  const st=live?.status||"idle";
+  $("pill").className="pill"+(!connected?"":st==="live"||st==="between"?" live":st==="paused"||st==="error"?" paused":"");
+  $("pillText").textContent=connected?(LABEL[st]||"Off air"):"Reconnecting";
+  $("viewers").hidden=!connected; $("viewers").textContent=viewers+" watching";
+  if(stats){
+    $("fSince").textContent=new Date(stats.since).toLocaleDateString([], {month:"short",day:"numeric",year:"numeric"});
+    $("fRounds").textContent=stats.rounds.toLocaleString(); $("fProblems").textContent=stats.problems;
+  }
+  $("roundMeta").textContent=isWorking()?`Round ${live.round} · step ${live.stage+1} of ${STAGES.length}`:"";
+}
+function renderProblem(){
+  if(!PROBLEMS.length) return;
+  const i=live?.problemIdx??0, p=PROBLEMS[i];
+  $("pEyebrow").textContent=`Problem ${i+1} of ${PROBLEMS.length} · posed ${p.posed}`+(p.prize?` · ${p.prize}`:"");
+  $("pName").textContent=p.name;
+  $("pStatement").innerHTML=esc(p.statement);
+  $("pKnown").innerHTML="<b>Known so far.</b> "+esc(p.known);
+  typeset($("pStatement").parentNode);
+}
+function renderStages(){
+  const on=isWorking();
+  $("stages").innerHTML=STAGES.map((s,k)=>{
+    const cls=!on?"":k<live.stage?"done":k===live.stage?"now":"";
+    return `<li class="${cls}"><span class="n">${on&&k<live.stage?"✓ ":""}0${k+1}</span><span class="l">${esc(s.label)}</span></li>`;
+  }).join("");
+}
+let boardKey="";
+function renderBoard(){
+  const b=$("board");
+  if(!isWorking()){
+    boardKey="";
+    const st=live?.status||"idle";
+    let head={between:"Round complete.",waiting:"Standing by.",paused:"Resting.",error:"Back in a moment.",idle:"The board is quiet."}[st]||"The board is quiet.";
+    let msg=esc(live?.message||"The Professor will be back at the board shortly.");
+    if(st==="between"&&live.resumeAt){const s=Math.max(0,Math.round((live.resumeAt-Date.now())/1000));head="Round complete.";msg=`Next up in ${s}s: <b>${esc(PROBLEMS[live.problemIdx]?.name||"")}</b>. The last verdict is in the notebook below.`}
+    b.innerHTML=`<div class="idle"><div class="eyebrow">${esc(LABEL[st]||"Off air")}</div><h4>${head}</h4><p>${msg}</p></div>`;
+    return;
+  }
+  const s=STAGES[live.stage], key=live.problemIdx+"/"+live.round+"/"+live.stage;
+  if(key!==boardKey){
+    boardKey=key;
+    b.innerHTML=`<div class="board-head"><h4>${esc(s.label)}</h4><span class="ask">${esc(s.ask)}</span></div>
+      <details class="scratch" id="scratch" hidden open><summary>Scratchpad</summary><pre id="think"></pre></details>
+      <div class="md" id="live"></div>`;
+  }
+  const sc=$("scratch"), th=$("think");
+  sc.hidden=!live.thinking; th.textContent=live.thinking||""; th.scrollTop=th.scrollHeight;
+  if(live.text&&sc.open&&!sc.dataset.touched) sc.open=false;
+  const el=$("live");
+  if(!live.text){el.className="md";el.innerHTML='<p class="thinking">Thinking… the first line can take a minute on a problem this hard.</p>';return}
+  el.className="md caret"; el.innerHTML=md(live.text); typeset(el);
+}
+let bt=null; function scheduleBoard(){ if(bt) return; bt=setTimeout(()=>{bt=null;renderBoard();},400); }
+
+function renderNotebook(){
+  const box=$("nb");
+  const rows=nb.slice();
+  // the problem on the board right now always sits at the top
+  if(isWorking()){
+    const k=rows.findIndex(r=>r.idx===live.problemIdx);
+    const cur=k>=0?rows.splice(k,1)[0]:{idx:live.problemIdx,rounds:0,lastAt:Date.now(),status:"open",verdict:""};
+    rows.unshift(cur);
+  }
+  if(!rows.length){box.innerHTML='<p class="empty">The first round is underway. Each problem appears here once the Professor has worked on it.</p>';return}
+  const open=new Set([...box.querySelectorAll("details.entry[open]")].map(d=>d.dataset.i));
+  box.innerHTML=rows.map(r=>{
+    const p=PROBLEMS[r.idx]; if(!p) return "";
+    const now=isWorking()&&live.problemIdx===r.idx;
+    const chip=now?'<span class="chip now">Working now</span>':r.status==="partial"?'<span class="chip partial">Partial progress</span>':'<span class="chip">Still open</span>';
+    const rounds=r.rounds?`${r.rounds} round${r.rounds>1?"s":""}`:"First round";
+    const sub=now?`${rounds} · round ${live.round} in progress`:`${rounds} · last worked ${ago(r.lastAt)}`;
+    return `<details class="entry" data-i="${r.idx}" ${open.has(String(r.idx))?"open":""}>
+      <summary><span class="num">${String(r.idx+1).padStart(2,"0")}</span><span class="nm">${esc(p.name)}</span>${chip}<span class="sub">${sub}</span></summary>
+      <div class="body"><p class="stmt">${esc(p.statement)}</p>
+        ${r.verdict?`<div class="verdict"><div class="eyebrow">Latest verdict · round ${r.verdictRound}</div><div class="md v"></div></div>`:`<p class="thinking">No verdict yet. Watch the board above.</p>`}
+        ${r.rounds?`<button class="more" type="button">Read all ${r.rounds>1?r.rounds+" rounds":"of round 1"}</button><div class="rounds"></div>`:""}
+      </div></details>`;
+  }).join("");
+  box.querySelectorAll("details.entry").forEach(d=>{
+    const r=rows.find(x=>String(x.idx)===d.dataset.i);
+    const fill=()=>{ if(d.dataset.done) return; d.dataset.done=1; const v=d.querySelector(".v"); if(v){v.innerHTML=md(r.verdict);} typeset(d.querySelector(".body")); };
+    if(d.open) fill(); d.addEventListener("toggle",()=>{if(d.open) fill()});
+    const more=d.querySelector(".more"); if(more) more.onclick=()=>loadRounds(r.idx,d,more);
+  });
+}
+async function loadRounds(i,d,btn){
+  btn.disabled=true; btn.textContent="Loading…";
+  try{
+    const j=await (await fetch("/api/problem/"+i)).json();
+    const box=d.querySelector(".rounds");
+    box.innerHTML=j.rounds.map(r=>`<details class="round"><summary>Round ${r.round}<span>${new Date(r.steps[0]?.at||Date.now()).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</span></summary>
+      ${r.steps.sort((a,b)=>a.stage-b.stage).map(s=>`<h5>${esc(STAGES[s.stage]?.label||"")}</h5><div class="md" data-src="${encodeURIComponent(s.text)}"></div>`).join("")}</details>`).join("");
+    box.querySelectorAll("details.round").forEach(rd=>rd.addEventListener("toggle",()=>{
+      if(!rd.open||rd.dataset.done) return; rd.dataset.done=1;
+      rd.querySelectorAll(".md").forEach(m=>{m.innerHTML=md(decodeURIComponent(m.dataset.src));}); typeset(rd);
+    }));
+    btn.hidden=true;
+  }catch(e){btn.disabled=false; btn.textContent="Couldn't load the rounds. Try again";}
+}
+function renderAll(){renderTop();renderProblem();renderStages();renderBoard();renderNotebook()}
+
+/* live stream */
+function connect(){
+  const es=new EventSource("/events");
+  es.addEventListener("snapshot",e=>{const d=JSON.parse(e.data);PROBLEMS=d.problems;STAGES=d.stages;live=d.live;nb=d.notebook;stats=d.stats;viewers=d.viewers;connected=true;boardKey="";fillPick();renderAll();});
+  es.addEventListener("live",e=>{
+    const prev=live; live=JSON.parse(e.data);
+    renderTop();renderStages();
+    if(!prev||prev.problemIdx!==live.problemIdx) renderProblem();
+    if(!prev||prev.status!==live.status||prev.problemIdx!==live.problemIdx) renderNotebook();
+    renderBoard();
+  });
+  es.addEventListener("delta",e=>{if(!live)return;const d=JSON.parse(e.data);live.text+=d.text;live.thinking+=d.thinking;scheduleBoard();});
+  es.addEventListener("notebook",e=>{const d=JSON.parse(e.data);nb=d.notebook;stats=d.stats;renderTop();renderNotebook();});
+  es.addEventListener("viewers",e=>{viewers=JSON.parse(e.data);renderTop();});
+  es.onerror=()=>{connected=false;renderTop();};
+  es.onopen=()=>{connected=true;renderTop();};
+}
+connect();
+setInterval(()=>{if(live&&live.status==="between")renderBoard()},1000);
+document.getElementById("mjx").addEventListener("load",()=>{MathJax.startup&&MathJax.startup.promise.then(()=>{renderProblem();boardKey="";renderBoard();document.querySelectorAll(".body").forEach(typeset);})});
+document.addEventListener("toggle",e=>{if(e.target.id==="scratch")e.target.dataset.touched=1},true);
+
+/* host controls: open the site with #admin */
+function fillPick(){ const s=$("pick"); if(!s.options.length) s.innerHTML=PROBLEMS.map((p,i)=>`<option value="${i}">Next: ${i+1}. ${esc(p.name)}</option>`).join(""); }
+if(location.hash==="#admin"){
+  $("hostPanel").hidden=false;
+  try{$("token").value=localStorage.getItem("prof-token")||""}catch(e){}
+  const call=async(action,q="")=>{
+    const tok=$("token").value.trim(); try{localStorage.setItem("prof-token",tok)}catch(e){}
+    const note=$("hostNote");
+    try{
+      const r=await fetch(`/api/admin/${action}${q}`,{method:"POST",headers:{Authorization:"Bearer "+tok}});
+      const j=await r.json().catch(()=>({}));
+      note.className="note"+(r.ok?"":" err");
+      note.textContent=r.ok?(j.note||"Done."):(j.error||"That didn't work.");
+    }catch(e){note.className="note err";note.textContent="Couldn't reach the server.";}
+  };
+  $("startBtn").onclick=()=>call("start");
+  $("stopBtn").onclick=()=>call("stop");
+  $("skipBtn").onclick=()=>call("skip");
+  $("pick").onchange=()=>call("select","?i="+$("pick").value);
+  $("auto").onchange=()=>call("auto","?on="+$("auto").checked);
+}
+</script>
+</body></html>

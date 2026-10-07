@@ -1,0 +1,10 @@
+{
+  "name": "the-professor",
+  "version": "1.0.0",
+  "description": "The Professor: an AI mathematician working on open problems live, 24/7.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=20" },
+  "dependencies": {}
+}
